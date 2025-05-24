@@ -12,6 +12,11 @@ uint8_t cursor_y = 0;
 #define MAX_COLS 80
 #define MAX_ROWS 25
 
+#define MAX_LINE_LENGTH 128
+char line_buffer[MAX_LINE_LENGTH];
+int line_length = 0;    // Cuántos caracteres hay en la línea
+int cursor_pos = 0;     // Dónde está el cursor dentro del buffer
+
 // ===== Funciones de video =====
 int get_offset(int col, int row) {
     return row * MAX_COLS + col;
@@ -69,6 +74,63 @@ void print_string(const char* str) {
         print_char(str[i]);
     }
 }
+
+void refresh_line() {
+    const char* prompt = "Bith> ";
+
+    // Imprimir el prompt desde la columna 0
+    for (int i = 0; prompt[i] != '\0'; i++) {
+        int offset = get_offset(i, cursor_y);
+        video_memory[offset] = (0x07 << 8) | prompt[i];
+    }
+
+    // Limpiar el resto de la línea desde después del prompt (col 5) hasta el final
+    for (int i = 5; i < MAX_COLS; i++) {
+        int offset = get_offset(i, cursor_y);
+        video_memory[offset] = (0x07 << 8) | ' ';
+    }
+
+    // Imprimir el buffer a partir de la columna 5
+    for (int i = 0; i < line_length; i++) {
+        int offset = get_offset(5 + i, cursor_y);
+        video_memory[offset] = (0x07 << 8) | line_buffer[i];
+    }
+
+    // Poner el cursor en la posición correcta (col 5 + cursor_pos)
+    cursor_x = 5 + cursor_pos;
+    update_cursor();
+}
+
+
+
+void insert_char(char c) {
+    if (line_length >= MAX_LINE_LENGTH - 1) return;  // evitar overflow
+
+    // Mover los caracteres a la derecha para hacer espacio
+    for (int i = line_length; i > cursor_pos; i--) {
+        line_buffer[i] = line_buffer[i - 1];
+    }
+
+    line_buffer[cursor_pos] = c;
+    line_length++;
+    cursor_pos++;
+    refresh_line();
+}
+
+
+void backspace_char() {
+    if (cursor_pos == 0) return;  // No se puede borrar antes del inicio
+
+    // Mover los caracteres hacia la izquierda para borrar el de la izquierda del cursor
+    for (int i = cursor_pos - 1; i < line_length - 1; i++) {
+        line_buffer[i] = line_buffer[i + 1];
+    }
+
+    line_length--;
+    cursor_pos--;
+    refresh_line();
+}
+
 
 // ===== Teclado =====
 char scancode_to_ascii[128] = {
@@ -128,15 +190,13 @@ void wait_for_keypress() {
 
             if (scancode == 0x0E) {
                 if (!backspace_held) {
-                    print_char('\b');
-                    update_cursor();
+                    backspace_char();
                     backspace_held = 1;
                     backspace_repeat_counter = 0;
                 } else {
                     backspace_repeat_counter++;
                     if (backspace_repeat_counter >= 5) {
-                        print_char('\b');
-                        update_cursor();
+                        backspace_char();
                         backspace_repeat_counter = 0;
                     }
                 }
@@ -145,9 +205,16 @@ void wait_for_keypress() {
 
             char key = is_shift_pressed ? scancode_to_ascii_shift[scancode] : scancode_to_ascii[scancode];
             if (key) {
-                print_char(key);
-                if (key == '\n') {
+                if (key == '\b') {
+                    backspace_char();
+                } else if (key == '\n') {
+                    print_char('\n');
+                    line_length = 0;
+                    cursor_pos = 0;
+                    line_buffer[0] = '\0';
                     print_string("Bith> ");
+                } else {
+                    insert_char(key);
                 }
             }
         }
@@ -155,7 +222,6 @@ void wait_for_keypress() {
 }
 
 
-// ===== Punto de entrada del kernel =====
 void kernel_main() {
     clear_screen();
     print_string("BithoraOS v0.003\n\n");
