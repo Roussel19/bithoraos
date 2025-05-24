@@ -17,6 +17,11 @@ char line_buffer[MAX_LINE_LENGTH];
 int line_length = 0;    // Cuántos caracteres hay en la línea
 int cursor_pos = 0;     // Dónde está el cursor dentro del buffer
 
+#define MAX_HISTORY 10
+char history[MAX_HISTORY][MAX_LINE_LENGTH];
+int history_count = 0;
+int history_index = -1; // -1 cuando no estás navegando
+
 // ===== Funciones de video =====
 int get_offset(int col, int row) {
     return row * MAX_COLS + col;
@@ -175,6 +180,7 @@ void wait_for_keypress() {
 
         if (scancode == 0xE0) { // Tecla extendida
             uint8_t ext_scancode = keyboard_read_scancode();
+
             if (ext_scancode == 0x4B) { // Flecha izquierda
                 if (cursor_pos > 0) {
                     cursor_pos--;
@@ -185,7 +191,38 @@ void wait_for_keypress() {
                     cursor_pos++;
                     refresh_line();
                 }
+            } else if (ext_scancode == 0x48) { // Flecha ↑
+                if (history_count > 0) {
+                    if (history_index < history_count - 1) {
+                        history_index++;
+                        for (int i = 0; i < MAX_LINE_LENGTH; i++) {
+                            line_buffer[i] = history[history_count - 1 - history_index][i];
+                        }
+                        line_length = 0;
+                        while (line_buffer[line_length] != '\0') line_length++;
+                        cursor_pos = line_length;
+                        refresh_line();
+                    }
+                }
+            } else if (ext_scancode == 0x50) { // Flecha ↓
+                if (history_index > 0) {
+                    history_index--;
+                    for (int i = 0; i < MAX_LINE_LENGTH; i++) {
+                        line_buffer[i] = history[history_count - 1 - history_index][i];
+                    }
+                    line_length = 0;
+                    while (line_buffer[line_length] != '\0') line_length++;
+                    cursor_pos = line_length;
+                    refresh_line();
+                } else if (history_index == 0) {
+                    history_index = -1;
+                    line_length = 0;
+                    cursor_pos = 0;
+                    line_buffer[0] = '\0';
+                    refresh_line();
+                }
             }
+
             continue;
         }
 
@@ -225,6 +262,16 @@ void wait_for_keypress() {
                     backspace_char();
                 } else if (key == '\n') {
                     print_char('\n');
+
+                    if (line_length > 0 && history_count < MAX_HISTORY) {
+                        for (int i = 0; i < line_length; i++) {
+                            history[history_count][i] = line_buffer[i];
+                        }
+                        history[history_count][line_length] = '\0';
+                        history_count++;
+                    }
+
+                    history_index = -1;
                     line_length = 0;
                     cursor_pos = 0;
                     line_buffer[0] = '\0';
