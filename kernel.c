@@ -98,40 +98,56 @@ char scancode_to_ascii_shift[128] = {
 
 int shift_pressed = 0;
 
+uint8_t keyboard_read_scancode() {
+    while (!(inb(0x64) & 0x01));  // Esperar hasta que el buffer tenga datos
+    return inb(0x60);
+}
+
 void wait_for_keypress() {
-    uint8_t last_scancode = 0;
+    int is_shift_pressed = 0;
+    int backspace_held = 0;
+    int backspace_repeat_counter = 0;
 
     while (1) {
-        uint8_t scancode = inb(0x60);
+        uint8_t scancode = keyboard_read_scancode();
 
-        if (scancode != last_scancode) {
-            last_scancode = scancode;
-
-            // Shift presionado
+        if (scancode & 0x80) {
+            uint8_t released = scancode & 0x7F;
+            if (released == 0x2A || released == 0x36) {
+                is_shift_pressed = 0;
+            }
+            if (released == 0x0E) {
+                backspace_held = 0;
+                backspace_repeat_counter = 0;
+            }
+        } else {
             if (scancode == 0x2A || scancode == 0x36) {
-                shift_pressed = 1;
+                is_shift_pressed = 1;
                 continue;
             }
 
-            // Shift soltado
-            if (scancode == 0xAA || scancode == 0xB6) {
-                shift_pressed = 0;
-                continue;
-            }
-
-            if (scancode < 128) {
-                char key;
-                if (shift_pressed)
-                    key = scancode_to_ascii_shift[scancode];
-                else
-                    key = scancode_to_ascii[scancode];
-
-                if (key) {
-                    print_char(key);
-                    if (key == '\n') {
-                        print_string("Bith> ");
+            if (scancode == 0x0E) {
+                if (!backspace_held) {
+                    print_char('\b');
+                    update_cursor();
+                    backspace_held = 1;
+                    backspace_repeat_counter = 0;
+                } else {
+                    backspace_repeat_counter++;
+                    if (backspace_repeat_counter >= 5) {
+                        print_char('\b');
+                        update_cursor();
+                        backspace_repeat_counter = 0;
                     }
-                    for (volatile int i = 0; i < 100000; i++);
+                }
+                continue;
+            }
+
+            char key = is_shift_pressed ? scancode_to_ascii_shift[scancode] : scancode_to_ascii[scancode];
+            if (key) {
+                print_char(key);
+                if (key == '\n') {
+                    print_string("Bith> ");
                 }
             }
         }
