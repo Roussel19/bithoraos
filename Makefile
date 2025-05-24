@@ -14,9 +14,13 @@ $(BUILD_DIR)/multiboot.o: multiboot_header.asm | $(BUILD_DIR)
 $(BUILD_DIR)/kernel.o: kernel.c | $(BUILD_DIR)
 	i686-elf-gcc -ffreestanding -m32 -c kernel.c -o $(BUILD_DIR)/kernel.o
 
-# Enlazar ambos objetos al binario final
-$(BUILD_DIR)/kernel.bin: $(BUILD_DIR)/multiboot.o $(BUILD_DIR)/kernel.o linker.ld
-	i686-elf-ld -T linker.ld -o $(BUILD_DIR)/kernel.bin $(BUILD_DIR)/multiboot.o $(BUILD_DIR)/kernel.o -nostdlib
+# Compilar funciones de puertos (ASM embebido en C)
+$(BUILD_DIR)/ports.o: ports.c | $(BUILD_DIR)
+	i686-elf-gcc -ffreestanding -m32 -c ports.c -o $(BUILD_DIR)/ports.o
+
+# Enlazar objetos al binario final
+$(BUILD_DIR)/kernel.bin: $(BUILD_DIR)/multiboot.o $(BUILD_DIR)/kernel.o $(BUILD_DIR)/ports.o linker.ld
+	i686-elf-ld -T linker.ld -o $(BUILD_DIR)/kernel.bin $(BUILD_DIR)/multiboot.o $(BUILD_DIR)/kernel.o $(BUILD_DIR)/ports.o -nostdlib
 
 # Crear ISO booteable con GRUB
 iso: $(BUILD_DIR)/kernel.bin
