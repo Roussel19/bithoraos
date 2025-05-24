@@ -11,13 +11,14 @@ uint8_t cursor_y = 0;
 
 #define MAX_COLS 80
 #define MAX_ROWS 25
-
+#define COLOR_ATTRIBUTE 0x3F
 #define MAX_LINE_LENGTH 128
+#define MAX_HISTORY 10
+
 char line_buffer[MAX_LINE_LENGTH];
 int line_length = 0;    // Cuántos caracteres hay en la línea
 int cursor_pos = 0;     // Dónde está el cursor dentro del buffer
 
-#define MAX_HISTORY 10
 char history[MAX_HISTORY][MAX_LINE_LENGTH];
 int history_count = 0;
 int history_index = -1; // -1 cuando no estás navegando
@@ -29,7 +30,7 @@ int get_offset(int col, int row) {
 
 void clear_screen() {
     for (int i = 0; i < MAX_COLS * MAX_ROWS; i++) {
-        video_memory[i] = (0x07 << 8) | ' ';
+        video_memory[i] = (COLOR_ATTRIBUTE << 8) | ' ';
     }
     cursor_x = 0;
     cursor_y = 0;
@@ -57,10 +58,10 @@ void print_char(char c) {
             cursor_x = MAX_COLS - 1;
         }
         int offset = get_offset(cursor_x, cursor_y);
-        video_memory[offset] = (0x07 << 8) | ' ';
+        video_memory[offset] = (COLOR_ATTRIBUTE << 8) | ' ';
     } else {
         int offset = get_offset(cursor_x, cursor_y);
-        video_memory[offset] = (0x07 << 8) | c;
+        video_memory[offset] = (COLOR_ATTRIBUTE << 8) | c;
         cursor_x++;
         if (cursor_x >= MAX_COLS) {
             cursor_x = 0;
@@ -69,9 +70,9 @@ void print_char(char c) {
     }
 
     if (cursor_y >= MAX_ROWS) {
-        cursor_y = 0; // Puedes implementar scroll aquí si quieres
+        cursor_y = 0;
     }
-    update_cursor(); // 👉 Esto mueve el cursor visible
+    update_cursor();
 }
 
 void print_string(const char* str) {
@@ -86,27 +87,24 @@ void refresh_line() {
     // Imprimir el prompt desde la columna 0
     for (int i = 0; prompt[i] != '\0'; i++) {
         int offset = get_offset(i, cursor_y);
-        video_memory[offset] = (0x07 << 8) | prompt[i];
+        video_memory[offset] = (COLOR_ATTRIBUTE << 8) | prompt[i];
     }
 
-    // Limpiar el resto de la línea desde después del prompt (col 5) hasta el final
+    // Limpiar el resto de la línea
     for (int i = 5; i < MAX_COLS; i++) {
         int offset = get_offset(i, cursor_y);
-        video_memory[offset] = (0x07 << 8) | ' ';
+        video_memory[offset] = (COLOR_ATTRIBUTE << 8) | ' ';
     }
 
-    // Imprimir el buffer a partir de la columna 5
+    // Imprimir el buffer
     for (int i = 0; i < line_length; i++) {
         int offset = get_offset(5 + i, cursor_y);
-        video_memory[offset] = (0x07 << 8) | line_buffer[i];
+        video_memory[offset] = (COLOR_ATTRIBUTE << 8) | line_buffer[i];
     }
 
-    // Poner el cursor en la posición correcta (col 5 + cursor_pos)
     cursor_x = 5 + cursor_pos;
     update_cursor();
 }
-
-
 
 void insert_char(char c) {
     if (line_length >= MAX_LINE_LENGTH - 1) return;  // evitar overflow
@@ -289,6 +287,6 @@ void wait_for_keypress() {
 void kernel_main() {
     clear_screen();
     print_string("BithoraOS v0.003\n\n");
-    print_string("Bith>  ");
+    print_string("Bith>");
     wait_for_keypress();
 }
