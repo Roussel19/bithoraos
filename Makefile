@@ -10,17 +10,31 @@ $(BUILD_DIR):
 $(BUILD_DIR)/multiboot.o: multiboot_header.asm | $(BUILD_DIR)
 	nasm -f elf32 multiboot_header.asm -o $(BUILD_DIR)/multiboot.o
 
-# Compilar el kernel en C
+# Compilar kernel
 $(BUILD_DIR)/kernel.o: kernel.c | $(BUILD_DIR)
 	i686-elf-gcc -ffreestanding -m32 -c kernel.c -o $(BUILD_DIR)/kernel.o
 
-# Compilar funciones de puertos (ASM embebido en C)
+# Compilar puertos
 $(BUILD_DIR)/ports.o: ports.c | $(BUILD_DIR)
 	i686-elf-gcc -ffreestanding -m32 -c ports.c -o $(BUILD_DIR)/ports.o
 
-# Enlazar objetos al binario final
-$(BUILD_DIR)/kernel.bin: $(BUILD_DIR)/multiboot.o $(BUILD_DIR)/kernel.o $(BUILD_DIR)/ports.o linker.ld
-	i686-elf-ld -T linker.ld -o $(BUILD_DIR)/kernel.bin $(BUILD_DIR)/multiboot.o $(BUILD_DIR)/kernel.o $(BUILD_DIR)/ports.o -nostdlib
+# Compilar video (pantalla)
+$(BUILD_DIR)/video.o: video.c | $(BUILD_DIR)
+	i686-elf-gcc -ffreestanding -m32 -c video.c -o $(BUILD_DIR)/video.o
+
+# Compilar teclado
+$(BUILD_DIR)/keyboard.o: keyboard.c | $(BUILD_DIR)
+	i686-elf-gcc -ffreestanding -m32 -c keyboard.c -o $(BUILD_DIR)/keyboard.o
+
+# Enlazar todos los objetos al binario final
+$(BUILD_DIR)/kernel.bin: $(BUILD_DIR)/multiboot.o $(BUILD_DIR)/kernel.o $(BUILD_DIR)/ports.o $(BUILD_DIR)/video.o $(BUILD_DIR)/keyboard.o linker.ld
+	i686-elf-ld -T linker.ld -o $(BUILD_DIR)/kernel.bin \
+		$(BUILD_DIR)/multiboot.o \
+		$(BUILD_DIR)/kernel.o \
+		$(BUILD_DIR)/ports.o \
+		$(BUILD_DIR)/video.o \
+		$(BUILD_DIR)/keyboard.o \
+		-nostdlib
 
 # Crear ISO booteable con GRUB
 iso: $(BUILD_DIR)/kernel.bin
@@ -35,4 +49,4 @@ run: iso
 
 # Limpiar todo
 clean:
-	rm -rf build RouX.iso
+	rm -rf $(BUILD_DIR) RouX.iso
