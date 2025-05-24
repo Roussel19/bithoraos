@@ -4,7 +4,6 @@
 
 #define MAX_COLS 80
 #define MAX_ROWS 25
-#define COLOR_ATTRIBUTE 0x3F
 #define MAX_LINE_LENGTH 128
 #define MAX_HISTORY 10
 
@@ -22,15 +21,6 @@ int history_index = -1;
 
 int get_offset(int col, int row) {
     return row * MAX_COLS + col;
-}
-
-void clear_screen() {
-    for (int i = 0; i < MAX_COLS * MAX_ROWS; i++) {
-        video_memory[i] = (COLOR_ATTRIBUTE << 8) | ' ';
-    }
-    cursor_x = 0;
-    cursor_y = 0;
-    update_cursor();
 }
 
 void update_cursor() {
@@ -56,6 +46,15 @@ void scroll_screen() {
     }
 
     cursor_y = MAX_ROWS - 1;
+}
+
+void clear_screen() {
+    for (int i = 0; i < MAX_COLS * MAX_ROWS; i++) {
+        video_memory[i] = (COLOR_ATTRIBUTE << 8) | ' ';
+    }
+    cursor_x = 0;
+    cursor_y = 0;
+    update_cursor();
 }
 
 void print_char(char c) {
@@ -91,6 +90,27 @@ void print_string(const char* str) {
     for (int i = 0; str[i] != '\0'; i++) {
         print_char(str[i]);
     }
+}
+
+void print_colored_string(const char* str, uint8_t color) {
+    for (int i = 0; str[i] != '\0'; i++) {
+        if (str[i] == '\n') {
+            cursor_x = 0;
+            cursor_y++;
+        } else {
+            int offset = get_offset(cursor_x, cursor_y);
+            video_memory[offset] = (color << 8) | str[i];
+            cursor_x++;
+            if (cursor_x >= MAX_COLS) {
+                cursor_x = 0;
+                cursor_y++;
+            }
+        }
+        if (cursor_y >= MAX_ROWS) {
+            scroll_screen();
+        }
+    }
+    update_cursor();
 }
 
 void refresh_line() {
