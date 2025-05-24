@@ -70,7 +70,7 @@ void print_char(char c) {
     }
 
     if (cursor_y >= MAX_ROWS) {
-        cursor_y = 0;
+        scroll_screen();
     }
     update_cursor();
 }
@@ -120,6 +120,24 @@ void insert_char(char c) {
     refresh_line();
 }
 
+void scroll_screen() {
+    // Copiar cada fila hacia arriba
+    for (int row = 1; row < MAX_ROWS; row++) {
+        for (int col = 0; col < MAX_COLS; col++) {
+            int from = get_offset(col, row);
+            int to = get_offset(col, row - 1);
+            video_memory[to] = video_memory[from];
+        }
+    }
+
+    // Limpiar la última fila
+    for (int col = 0; col < MAX_COLS; col++) {
+        int offset = get_offset(col, MAX_ROWS - 1);
+        video_memory[offset] = (COLOR_ATTRIBUTE << 8) | ' ';
+    }
+
+    cursor_y = MAX_ROWS - 1;
+}
 
 void backspace_char() {
     if (cursor_pos == 0) return;  // No se puede borrar antes del inicio
