@@ -1,6 +1,9 @@
 #include <stdint.h>
 #include "ports.h"
 
+uint8_t key_pressed = 0;
+uint8_t scancode_down = 0;
+
 // Video
 volatile uint16_t* video_memory = (uint16_t*) 0xB8000;
 uint8_t cursor_x = 0;
@@ -80,6 +83,20 @@ char scancode_to_ascii[128] = {
     0, 0, 0, 0, 0, 0, 0,0,0,
     0,0,0,0,0,0,0,0
 };
+char scancode_to_ascii_shift[128] = {
+    0, 27, '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+', '\b',
+    '\t', 'Q','W','E','R','T','Y','U','I','O','P','{','}','\n',
+    0, 'A','S','D','F','G','H','J','K','L',':','"','~',
+    0, '|','Z','X','C','V','B','N','M','<','>','?',
+    0, '*', 0, ' ', 0,
+    0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,
+    0,0,0, '-', 0, 0, 0, '+',
+    0, 0, 0, 0, 0, 0, 0,0,0,
+    0,0,0,0,0,0,0,0
+};
+
+int shift_pressed = 0;
 
 void wait_for_keypress() {
     uint8_t last_scancode = 0;
@@ -90,8 +107,25 @@ void wait_for_keypress() {
         if (scancode != last_scancode) {
             last_scancode = scancode;
 
+            // Shift presionado
+            if (scancode == 0x2A || scancode == 0x36) {
+                shift_pressed = 1;
+                continue;
+            }
+
+            // Shift soltado
+            if (scancode == 0xAA || scancode == 0xB6) {
+                shift_pressed = 0;
+                continue;
+            }
+
             if (scancode < 128) {
-                char key = scancode_to_ascii[scancode];
+                char key;
+                if (shift_pressed)
+                    key = scancode_to_ascii_shift[scancode];
+                else
+                    key = scancode_to_ascii[scancode];
+
                 if (key) {
                     print_char(key);
                     if (key == '\n') {
@@ -103,6 +137,7 @@ void wait_for_keypress() {
         }
     }
 }
+
 
 // ===== Punto de entrada del kernel =====
 void kernel_main() {
