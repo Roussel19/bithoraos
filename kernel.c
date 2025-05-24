@@ -173,6 +173,22 @@ void wait_for_keypress() {
     while (1) {
         uint8_t scancode = keyboard_read_scancode();
 
+        if (scancode == 0xE0) { // Tecla extendida
+            uint8_t ext_scancode = keyboard_read_scancode();
+            if (ext_scancode == 0x4B) { // Flecha izquierda
+                if (cursor_pos > 0) {
+                    cursor_pos--;
+                    refresh_line();
+                }
+            } else if (ext_scancode == 0x4D) { // Flecha derecha
+                if (cursor_pos < line_length) {
+                    cursor_pos++;
+                    refresh_line();
+                }
+            }
+            continue;
+        }
+
         if (scancode & 0x80) {
             uint8_t released = scancode & 0x7F;
             if (released == 0x2A || released == 0x36) {
@@ -222,9 +238,10 @@ void wait_for_keypress() {
 }
 
 
+
 void kernel_main() {
     clear_screen();
     print_string("BithoraOS v0.003\n\n");
-    print_string("Bith> ");
+    print_string("Bith>  ");
     wait_for_keypress();
 }
