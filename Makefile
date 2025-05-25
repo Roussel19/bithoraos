@@ -27,14 +27,36 @@ $(BUILD_DIR)/video.o: video.c | $(BUILD_DIR)
 $(BUILD_DIR)/keyboard.o: keyboard.c | $(BUILD_DIR)
 	i686-elf-gcc -ffreestanding -m32 -c keyboard.c -o $(BUILD_DIR)/keyboard.o
 
+# Compilar comandos
+$(BUILD_DIR)/dispatcher.o: commands/dispatcher.c | $(BUILD_DIR)
+	i686-elf-gcc -ffreestanding -m32 -c commands/dispatcher.c -o $(BUILD_DIR)/dispatcher.o
+
+$(BUILD_DIR)/vacuum.o: commands/vacuum.c | $(BUILD_DIR)
+	i686-elf-gcc -ffreestanding -m32 -c commands/vacuum.c -o $(BUILD_DIR)/vacuum.o
+
+$(BUILD_DIR)/lib.o: lib.c | $(BUILD_DIR)
+	i686-elf-gcc -ffreestanding -m32 -c lib.c -o $(BUILD_DIR)/lib.o
+
 # Enlazar todo en kernel.bin
-$(BUILD_DIR)/kernel.bin: $(BUILD_DIR)/multiboot.o $(BUILD_DIR)/kernel.o $(BUILD_DIR)/ports.o $(BUILD_DIR)/video.o $(BUILD_DIR)/keyboard.o linker.ld
+$(BUILD_DIR)/kernel.bin: \
+	$(BUILD_DIR)/multiboot.o \
+	$(BUILD_DIR)/kernel.o \
+	$(BUILD_DIR)/ports.o \
+	$(BUILD_DIR)/video.o \
+	$(BUILD_DIR)/keyboard.o \
+	$(BUILD_DIR)/dispatcher.o \
+	$(BUILD_DIR)/vacuum.o \
+	$(BUILD_DIR)/lib.o \
+	linker.ld
 	i686-elf-ld -T linker.ld -o $(BUILD_DIR)/kernel.bin \
 		$(BUILD_DIR)/multiboot.o \
 		$(BUILD_DIR)/kernel.o \
 		$(BUILD_DIR)/ports.o \
 		$(BUILD_DIR)/video.o \
 		$(BUILD_DIR)/keyboard.o \
+		$(BUILD_DIR)/dispatcher.o \
+		$(BUILD_DIR)/vacuum.o \
+		$(BUILD_DIR)/lib.o \
 		-nostdlib
 
 # Crear ISO booteable

@@ -3,6 +3,7 @@
 #include "video.h"
 #include "ports.h"
 #include "kernel.h"
+#include "include/commands.h"
 
 char scancode_to_ascii[128] = {
     0, 27, '1','2','3','4','5','6','7','8','9','0','-','=', '\b',
@@ -106,6 +107,9 @@ void wait_for_keypress() {
                         history[history_count][line_length] = '\0';
                         history_count++;
                     }
+                    line_buffer[line_length] = '\0';       // Aseguramos que sea string válida
+					execute_command(line_buffer); 
+					 
                     history_index = -1;
                     line_length = 0;
                     cursor_pos = 0;
