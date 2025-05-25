@@ -1,0 +1,180 @@
+==========================
+BITHORA OS - README.txt
+==========================
+
+Versión: 0.1  
+Autor: Roussel  
+Fecha de última edición: 2025  
+Descripción: Sistema operativo en desarrollo, escrito desde cero en C y ASM, con diseño modular, estilo consola personalizada, colores únicos y visión de expansión hacia un sistema operativo completo con su propio lenguaje de programación interpretado (.bit) y compilado (.tha).
+
+----------------------------------------------------
+ESTRUCTURA GENERAL Y FUNCIONALIDAD ACTUAL
+----------------------------------------------------
+
+BithoraOS es un sistema operativo de bajo nivel que actualmente implementa las siguientes características funcionales:
+
+✔️ Bootloader con encabezado Multiboot  
+✔️ Kernel propio (escrito en C)  
+✔️ Manejo de video y salida de texto en modo texto (VGA)  
+✔️ Interacción con teclado (con historial de comandos y edición de línea)  
+✔️ Soporte de entrada interactiva en consola  
+✔️ Sistema de comandos personalizados (únicos, no basados en Unix/Windows)  
+✔️ Primer comando funcional: `vacuum`, que limpia la pantalla  
+✔️ Interfaz en colores personalizados: fondo negro, letras verdes (estilo terminal hacker)
+
+-----------------------------
+ESTRUCTURA DE ARCHIVOS
+-----------------------------
+
+📁 /build/  
+→ Carpeta de compilación (intermedia)
+
+📁 /commands/  
+→ Módulos de comandos individuales.  
+→ Cada comando estará separado en su propio archivo.  
+→ Actualmente contiene el **dispatcher.c**, que ejecuta el comando `vacuum`.
+
+📁 /include/  
+→ Headers personalizados.  
+→ Centraliza declaraciones de comandos (`commands.h`).
+
+📁 /  
+→ Archivos principales del sistema:
+
+- `Makefile`: script de construcción con soporte para:
+   • Compilación modular  
+   • Enlace  
+   • Creación de ISO booteable  
+   • Ejecución con QEMU
+
+- `multiboot_header.asm`: header en ensamblador NASM compatible con GRUB (Multiboot).  
+   • Es el primer código ejecutado.  
+   • Prepara el entorno para saltar al kernel en C.
+
+- `kernel.c`: núcleo principal del sistema.  
+   • Inicializa video, teclado, y muestra el prompt (`Bith> `).  
+   • Punto de entrada desde GRUB.
+
+- `ports.c`: funciones para leer/escribir directamente en puertos I/O del hardware (outb, inb).  
+   • Se usa para manejar el teclado.
+
+- `video.c`: control completo de la salida de texto.  
+   • Imprime caracteres y cadenas.  
+   • Maneja el buffer de texto VGA.  
+   • Control de cursor, scroll y colores.  
+   • `vacuum()` limpia la pantalla con fondo negro y texto verde.
+
+- `keyboard.c`: captura y traduce scancodes del teclado.  
+   • Maneja shift, backspace, flechas, y entrada de caracteres.  
+   • Soporte para historial (flechas arriba/abajo).  
+   • Soporte para edición en línea (izquierda/derecha).  
+   • Ejecuta los comandos al presionar Enter.
+
+- `linker.ld`: script de enlace para generar el binario final del kernel.
+
+- `grub/grub.cfg`: configuración de GRUB para arrancar el kernel.
+
+----------------------------
+FUNCIONES ACTUALES DETALLADAS
+----------------------------
+
+🔧 video.c  
+• `clear_screen()` — borra la pantalla completa  
+• `print_char(char)` — imprime un carácter  
+• `print_string(const char*)` — imprime una cadena  
+• `insert_char(char)` — inserta un carácter editable  
+• `refresh_line()` — redibuja la línea actual con cursor  
+• `scroll_screen()` — mueve las líneas hacia arriba  
+• `backspace_char()` — borra el carácter anterior al cursor  
+• Control completo del buffer VGA: texto verde sobre fondo negro
+
+⌨️ keyboard.c  
+• Traducción de scancodes en ASCII (con y sin shift)  
+• Edición de línea en tiempo real  
+• Soporte para:
+   - backspace  
+   - flechas (arriba/abajo para historial, izquierda/derecha para moverse)  
+   - shift  
+• Al presionar Enter:
+   - Agrega línea al historial  
+   - Ejecuta el comando vía `execute_command()`  
+   - Limpia línea para próxima entrada
+
+🧠 dispatcher.c  
+• Recibe una cadena (`input`)  
+• Compara con comandos válidos  
+• Ejecuta la función correspondiente  
+→ Actualmente solo:
+   • `"vacuum"` → llama a `vacuum()` (borrar pantalla)
+
+📦 ports.c  
+• `outb()` y `inb()`  
+• Permite comunicación directa con el hardware (PS/2, VGA, etc.)
+
+🧠 kernel.c  
+• Muestra logo/banner inicial  
+• Muestra `Bith>` como prompt  
+• Llama a `wait_for_keypress()` para iniciar la consola
+
+---------------------------------------
+CONVENCIÓN DE COMANDOS EN BITHORA
+---------------------------------------
+
+Los comandos en Bithora están diseñados para ser únicos y distintos a cualquier sistema tradicional.  
+❌ No se usan `ls`, `clear`, `cd`, etc.  
+✅ En su lugar se usan comandos inventados, por ejemplo:
+
+• `vacuum` → limpia pantalla  
+• Futuro:  
+   - `nerva` → mostrar archivos  
+   - `worm` → eliminar archivo  
+   - `vein` → navegar  
+   - `pulse` → mostrar estado del sistema  
+
+Los comandos se organizan modularmente en la carpeta `commands/`.
+
+----------------------------
+PLANES A FUTURO (ROADMAP)
+----------------------------
+
+🔹 Comandos esenciales del sistema (fase consola interactiva):  
+   - `nerva` (listar archivos)  
+   - `worm` (eliminar archivos)  
+   - `scribe` (crear/editar archivos)  
+   - `vein` (navegar entre carpetas)  
+
+🔹 Subsistema de archivos personalizado  
+   - Formato .bfs (Bithora File System)  
+   - Soporte para archivos y carpetas en RAM (posteriormente en disco)
+
+🔹 Lenguaje interpretado: **.bit**  
+   - Sintaxis simple  
+   - Potente y ágil  
+   - Similar a Python, pero con visión propia  
+   - Interpretado directamente por Bithora
+
+🔹 Lenguaje compilado: **.tha**  
+   - Sintaxis más estructurada  
+   - Compilador propio escrito en C  
+   - Generación de binarios para Bithora
+
+🔹 Drivers simples  
+   - Soporte para disco (ATA)  
+   - Modo gráfico básico (futuro)
+
+🔹 Shell visual opcional  
+   - Basada en consola gráfica simple  
+   - Navegación entre apps
+
+-----------------------------
+NOTAS FINALES
+-----------------------------
+
+🛠 Requisitos de compilación:
+- `i686-elf-gcc`, `nasm`, `grub-mkrescue`, `qemu`  
+- GNU/Linux recomendado  
+- Configurar correctamente `PATH` si el toolchain está en una carpeta custom
+
+📦 Compilación:
+```bash
+make run
